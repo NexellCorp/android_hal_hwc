@@ -273,12 +273,6 @@ static int hwc_set_active_config(struct hwc_composer_device_1 *dev, int display,
 		return ret;
 	}
 
-	ret = ctx->drm.SetDpmsMode(display, DRM_MODE_DPMS_ON);
-	if (ret) {
-		ALOGE("Failed to set dpms mode on %d", ret);
-		return ret;
-	}
-
 	return ret;
 }
 
