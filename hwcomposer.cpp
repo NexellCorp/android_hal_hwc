@@ -378,7 +378,7 @@ static int post_framebuffer(struct hwc_context_t *ctx, hwc_layer_1_t *fb_layer)
 		// HACK: handle mismatching between gralloc and ogl
 		// m->info.yoffset += m->info.yres * 2;
 		m->info.yoffset %= m->info.yres_virtual;
-		return ioctl(m->framebuffer->fd, FBIOPUT_VSCREENINFO, &m->info);
+		return ioctl(m->framebuffer->fd, FBIOPAN_DISPLAY, &m->info);
 	}
 
 	ALOGE("%s: invalid  fb handle(flags: 0x%x)", __func__, h->flags);
