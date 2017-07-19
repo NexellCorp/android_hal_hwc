@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#define ATRACE_TAG ATRACE_TAG_GRAPHICS
 #define LOG_TAG "hwcomposer-drm-nexell"
 
 #include <stdlib.h>
@@ -34,12 +33,10 @@
 #include <xf86drmMode.h>
 
 #include <cutils/log.h>
-#include <cutils/properties.h>
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer.h>
 #include <sw_sync.h>
 #include <sync/sync.h>
-#include <utils/Trace.h>
 
 #include <gralloc_priv.h>
 
@@ -580,7 +577,7 @@ static int render_fb(struct hwc_context_t *ctx, int display,
 static int hwc_set(hwc_composer_device_1_t *dev, size_t num_displays,
 				   hwc_display_contents_1_t **sf_display_contents)
 {
-	ATRACE_CALL();
+	// ATRACE_CALL();
 	struct hwc_context_t *ctx = (struct hwc_context_t *)&dev->common;
 	int ret = 0;
 
@@ -599,7 +596,7 @@ static int hwc_set(hwc_composer_device_1_t *dev, size_t num_displays,
 		}
 
 		if (!fb_layer || !fb_layer->handle) {
-			ALOGE("hwc_set: Can't find framebuffer layer for display %d", i);
+			ALOGE("hwc_set: Can't find framebuffer layer for display %zu", i);
 			continue;
 		}
 
@@ -610,7 +607,7 @@ static int hwc_set(hwc_composer_device_1_t *dev, size_t num_displays,
 		} else {
 			ret = render_fb(ctx, i, fb_layer);
 			if (ret)
-				ALOGE("failed to render_fb for display %d", i);
+				ALOGE("failed to render_fb for display %zu", i);
 		}
 	}
 
@@ -648,7 +645,9 @@ static int hwc_set_power_mode(struct hwc_composer_device_1 *dev, int display,
 	}
 
 	// HACK: If calling SetDpmsMode here, HDMI is not working...
-	// return ctx->drm.SetDpmsMode(display, dpmsValue);
+	if (display == HWC_DISPLAY_PRIMARY)
+		return ctx->drm.SetDpmsMode(display, dpmsValue);
+
 	return 0;
 }
 

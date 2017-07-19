@@ -43,8 +43,6 @@ LOCAL_C_INCLUDES := \
 	system/core/libsync/include \
 	$(LOCAL_PATH)/../gralloc
 
-LOCAL_CFLAGS := -DLOG_TAG=\"hwcomposer\"
-
 LOCAL_SRC_FILES := \
 	drmmode.cpp \
 	drmproperty.cpp \
