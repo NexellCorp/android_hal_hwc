@@ -364,6 +364,21 @@ static int hwc_prepare(hwc_composer_device_1_t *dev, size_t num_displays,
 
 static int post_framebuffer(struct hwc_context_t *ctx, hwc_layer_1_t *fb_layer)
 {
+	if (!fb_layer->handle) {
+		ALOGE("%s: invalid handle, wait handle", __func__);
+		int count = 100; // 100ms
+		while (!fb_layer->handle && count >= 0) {
+			usleep(1000);
+			ALOGE("wait %d ms", 100 - count + 1);
+			count--;
+		}
+
+		if (!fb_layer->handle) {
+			ALOGE("post_framebuffer: wait handle 100ms failed");
+			return -EINVAL;
+		}
+	}
+
 	private_handle_t const *h =
 		reinterpret_cast<private_handle_t const *>(fb_layer->handle);
 
@@ -372,9 +387,6 @@ static int post_framebuffer(struct hwc_context_t *ctx, hwc_layer_1_t *fb_layer)
 
 		m->info.activate = FB_ACTIVATE_VBL;
 		m->info.yoffset = h->offset / m->finfo.line_length;
-		// HACK: handle mismatching between gralloc and ogl
-		// m->info.yoffset += m->info.yres * 2;
-		m->info.yoffset %= m->info.yres_virtual;
 		return ioctl(m->framebuffer->fd, FBIOPAN_DISPLAY, &m->info);
 	}
 
@@ -388,6 +400,9 @@ static int render_fb(struct hwc_context_t *ctx, int display,
 	hwc_drm_display_t *hd = &ctx->displays[display];
 	hwc_drm_bo_t *bo = NULL;
 	int ret;
+
+	if (!fb_layer->handle)
+		return -EINVAL;
 
 	for (int i = 0; i < NUM_FB_BUFFERS; i++) {
 		if (hd->bo[i] &&
@@ -448,24 +463,92 @@ static int render_fb(struct hwc_context_t *ctx, int display,
 			drmModeAtomicFree(pset);
 			return ret;
 		}
-	}
 
-	ret = drmModeAtomicAddProperty(pset, connector->id(),
-								   connector->crtc_id_property().id(),
-								   crtc->id());
-	if (ret < 0) {
-		ALOGE("Failed to add conn/crtc id property to pset");
-		drmModeAtomicFree(pset);
-		return ret;
-	}
+		ret = drmModeAtomicAddProperty(pset, connector->id(),
+									   connector->crtc_id_property().id(),
+									   crtc->id());
+		if (ret < 0) {
+			ALOGE("Failed to add conn/crtc id property to pset");
+			drmModeAtomicFree(pset);
+			return ret;
+		}
 
-	ret = drmModeAtomicAddProperty(pset, plane->id(),
-								   plane->crtc_property().id(),
-								   crtc->id());
-	if (ret < 0) {
-		ALOGE("Failed to add crtc id property for plane %d, ret %d",
-			  plane->id(), ret);
-		return ret;
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->crtc_property().id(),
+									   crtc->id());
+		if (ret < 0) {
+			ALOGE("Failed to add crtc id property for plane %d, ret %d",
+				  plane->id(), ret);
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->crtc_x_property().id(),
+									   fb_layer->displayFrame.left);
+		if (ret < 0) {
+			ALOGE("Failed to add x property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->crtc_y_property().id(),
+									   fb_layer->displayFrame.top);
+		if (ret < 0) {
+			ALOGE("Failed to add y property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->crtc_w_property().id(),
+									   fb_layer->displayFrame.right -
+									   fb_layer->displayFrame.left);
+		if (ret < 0) {
+			ALOGE("Failed to add w property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->crtc_h_property().id(),
+									   fb_layer->displayFrame.bottom -
+									   fb_layer->displayFrame.top);
+		if (ret < 0) {
+			ALOGE("Failed to add h property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->src_x_property().id(),
+									   fb_layer->displayFrame.left);
+		if (ret < 0) {
+			ALOGE("Failed to add src x property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->src_y_property().id(),
+									   fb_layer->displayFrame.top);
+		if (ret < 0) {
+			ALOGE("Failed to add src y property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->src_w_property().id(),
+									   fb_layer->displayFrame.right -
+									   fb_layer->displayFrame.left);
+		if (ret < 0) {
+			ALOGE("Failed to add src w property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->src_h_property().id(),
+									   fb_layer->displayFrame.bottom -
+									   fb_layer->displayFrame.top);
+		if (ret < 0) {
+			ALOGE("Failed to add src h property for plane %d", plane->id());
+			return ret;
+		}
 	}
 
 	ALOGV("fb_id: %d", bo->fb_id);
@@ -477,75 +560,6 @@ static int render_fb(struct hwc_context_t *ctx, int display,
 			  plane->id());
 		return ret;
 	}
-
-	ret = drmModeAtomicAddProperty(pset, plane->id(),
-								   plane->crtc_x_property().id(),
-								   fb_layer->displayFrame.left);
-	if (ret < 0) {
-		ALOGE("Failed to add x property for plane %d", plane->id());
-		return ret;
-	}
-
-	ret = drmModeAtomicAddProperty(pset, plane->id(),
-								   plane->crtc_y_property().id(),
-								   fb_layer->displayFrame.top);
-	if (ret < 0) {
-		ALOGE("Failed to add y property for plane %d", plane->id());
-		return ret;
-	}
-
-	ret = drmModeAtomicAddProperty(pset, plane->id(),
-								   plane->crtc_w_property().id(),
-								   fb_layer->displayFrame.right -
-								   fb_layer->displayFrame.left);
-	if (ret < 0) {
-		ALOGE("Failed to add w property for plane %d", plane->id());
-		return ret;
-	}
-
-	ret = drmModeAtomicAddProperty(pset, plane->id(),
-								   plane->crtc_h_property().id(),
-								   fb_layer->displayFrame.bottom -
-								   fb_layer->displayFrame.top);
-	if (ret < 0) {
-		ALOGE("Failed to add h property for plane %d", plane->id());
-		return ret;
-	}
-
-	ret = drmModeAtomicAddProperty(pset, plane->id(),
-								   plane->src_x_property().id(),
-								   fb_layer->displayFrame.left);
-	if (ret < 0) {
-		ALOGE("Failed to add src x property for plane %d", plane->id());
-		return ret;
-	}
-
-	ret = drmModeAtomicAddProperty(pset, plane->id(),
-								   plane->src_y_property().id(),
-								   fb_layer->displayFrame.top);
-	if (ret < 0) {
-		ALOGE("Failed to add src y property for plane %d", plane->id());
-		return ret;
-	}
-
-	ret = drmModeAtomicAddProperty(pset, plane->id(),
-								   plane->src_w_property().id(),
-								   fb_layer->displayFrame.right -
-								   fb_layer->displayFrame.left);
-	if (ret < 0) {
-		ALOGE("Failed to add src w property for plane %d", plane->id());
-		return ret;
-	}
-
-	ret = drmModeAtomicAddProperty(pset, plane->id(),
-								   plane->src_h_property().id(),
-								   fb_layer->displayFrame.bottom -
-								   fb_layer->displayFrame.top);
-	if (ret < 0) {
-		ALOGE("Failed to add src h property for plane %d", plane->id());
-		return ret;
-	}
-
 	uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
 	ret = drmModeAtomicCommit(ctx->drm.fd(), pset, flags, &ctx->drm);
 	if (ret) {
@@ -587,18 +601,7 @@ static int hwc_set(hwc_composer_device_1_t *dev, size_t num_displays,
 		if (!dc || i == HWC_DISPLAY_VIRTUAL)
 			continue;
 
-		hwc_layer_1_t *fb_layer = NULL;
-		for (size_t j = 0; j < dc->numHwLayers; j++) {
-			if (dc->hwLayers[j].compositionType == HWC_FRAMEBUFFER_TARGET) {
-				fb_layer = &dc->hwLayers[j];
-				break;
-			}
-		}
-
-		if (!fb_layer || !fb_layer->handle) {
-			ALOGE("hwc_set: Can't find framebuffer layer for display %zu", i);
-			continue;
-		}
+		hwc_layer_1_t *fb_layer = &dc->hwLayers[dc->numHwLayers - 1];
 
 		if (i == 0) {
 			ret = post_framebuffer(ctx, fb_layer);
@@ -607,7 +610,7 @@ static int hwc_set(hwc_composer_device_1_t *dev, size_t num_displays,
 		} else {
 			ret = render_fb(ctx, i, fb_layer);
 			if (ret)
-				ALOGE("failed to render_fb for display %zu", i);
+				ALOGV("failed to render_fb for display %zu", i);
 		}
 	}
 
