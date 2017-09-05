@@ -67,7 +67,7 @@ int DrmEventListener::Init()
 
 void DrmEventListener::RegisterHotplugHandler(DrmEventHandler *handler)
 {
-	assert(!hotplug_handler_);
+	// assert(!hotplug_handler_);
 	hotplug_handler_ = handler;
 }
 
