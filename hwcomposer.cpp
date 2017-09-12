@@ -588,33 +588,16 @@ static int render_fb(struct hwc_context_t *ctx, int display,
 	return 0;
 }
 
-static int hwc_set(hwc_composer_device_1_t *dev, size_t num_displays,
-				   hwc_display_contents_1_t **sf_display_contents)
+static int hwc_set(hwc_composer_device_1_t * /*dev*/, size_t /*num_displays*/,
+				   hwc_display_contents_1_t ** /*sf_display_contents*/)
 {
-	// ATRACE_CALL();
-	struct hwc_context_t *ctx = (struct hwc_context_t *)&dev->common;
-	int ret = 0;
-
-	for (size_t i = 0; i < num_displays; i++) {
-		hwc_display_contents_1_t *dc = sf_display_contents[i];
-
-		if (!dc || i == HWC_DISPLAY_VIRTUAL)
-			continue;
-
-		hwc_layer_1_t *fb_layer = &dc->hwLayers[dc->numHwLayers - 1];
-
-		if (i == 0) {
-			ret = post_framebuffer(ctx, fb_layer);
-			if (ret)
-				ALOGE("FATAL ERROR: failed to post_framebuffer");
-		} else {
-			ret = render_fb(ctx, i, fb_layer);
-			if (ret)
-				ALOGV("failed to render_fb for display %zu", i);
-		}
-	}
-
 	return 0;
+}
+
+static int hwc_set_framebuffer_target(struct hwc_composer_device_1 *dev, int32_t id, hwc_layer_1_t *layer)
+{
+	struct hwc_context_t *ctx = (struct hwc_context_t *)&dev->common;
+	return render_fb(ctx, id, layer);
 }
 
 static int hwc_event_control(struct hwc_composer_device_1 *dev, int display,
@@ -804,6 +787,7 @@ static int hwc_device_open(const struct hw_module_t *module, const char *name,
 
 	ctx->device.prepare = hwc_prepare;
 	ctx->device.set = hwc_set;
+	ctx->device.setFramebufferTarget = hwc_set_framebuffer_target;
 	ctx->device.eventControl = hwc_event_control;
 	ctx->device.setPowerMode = hwc_set_power_mode;
 	ctx->device.query = hwc_query;
