@@ -27,7 +27,6 @@
 #include <xf86drmMode.h>
 
 #include <cutils/log.h>
-#include <cutils/properties.h>
 
 namespace android {
 
@@ -43,8 +42,7 @@ DrmResources::~DrmResources()
 
 int DrmResources::Init()
 {
-	char path[PROPERTY_VALUE_MAX];
-	property_get("hwc.drm.device", path, "/dev/dri/card0");
+	const char *path = "/dev/dri/card0";
 
 	fd_.Set(open(path, O_RDWR));
 	if (fd() < 0) {
@@ -148,7 +146,7 @@ int DrmResources::Init()
 			break;
 		}
 
-		if (conn->built_in() && !found_primary) {
+		if (!found_primary) {
 			conn->set_display(0);
 			found_primary = true;
 		} else {
