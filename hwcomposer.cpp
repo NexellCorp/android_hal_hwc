@@ -211,7 +211,7 @@ static int hwc_get_display_configs(struct hwc_composer_device_1 *dev,
 
 	DrmConnector *connector = ctx->drm.GetConnectorForDisplay(display);
 	if (!connector) {
-		ALOGE("Failed to get connector for display %d", display);
+		ALOGV("Failed to get connector for display %d", display);
 		return -ENODEV;
 	};
 
