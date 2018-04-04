@@ -44,6 +44,7 @@
 #include "drmeventlistener.h"
 #include "vsyncworker.h"
 #include "importer.h"
+#include "renderworker.h"
 
 #define UM_PER_INCH 25400
 
@@ -56,6 +57,7 @@ typedef struct hwc_drm_display {
 	std::vector<uint32_t> config_ids;
 
 	VSyncWorker vsync_worker;
+	RenderWorker render_worker;
 
 	hwc_drm_bo_t *bo[NUM_FB_BUFFERS];
 
@@ -148,6 +150,230 @@ struct hwc_context_t {
 	Importer *importer;
 	private_module_t *gralloc;
 };
+
+RenderWorker::~RenderWorker()
+{
+}
+
+void RenderWorker::Routine()
+{
+	if (queue_.isEmpty()) {
+		int ret = Lock();
+
+		if (ret)
+			ALOGE("Failed to lock render worker %d", ret);
+
+		int wait_ret = WaitForSignalOrExitLocked();
+
+		switch (wait_ret) {
+		case 0:
+			break;
+		default:
+			ALOGE("RenderWorker failed to wait for signal %d", wait_ret);
+			break;
+		}
+
+		ret = Unlock();
+		if (ret)
+			ALOGE("Failed to unlock worker %d", ret);
+	}
+
+	buffer_handle_t h = DequeueFB();
+	if (h != NULL) {
+		struct hwc_context_t *ctx = (struct hwc_context_t *)ctx_;
+		Render(h);
+	}
+}
+
+int RenderWorker::Render(buffer_handle_t handle)
+{
+	struct hwc_context_t *ctx = (struct hwc_context_t *)ctx_;
+
+	hwc_drm_display_t *hd = &ctx->displays[id_];
+	hwc_drm_bo_t *bo = NULL;
+	int ret;
+
+	for (int i = 0; i < NUM_FB_BUFFERS; i++) {
+		if (hd->bo[i] &&
+			hd->bo[i]->priv == (void *)(handle)) {
+			bo = hd->bo[i];
+			break;
+		}
+	}
+
+	if (!bo) {
+		bo = new hwc_drm_bo_t();
+
+		ret = ctx->importer->ImportBuffer(handle, bo);
+		if (ret) {
+			ALOGE("FATAL ERROR: failed to ImportBuffer for %p", handle);
+			return ret;
+		}
+
+		for (int i = 0; i < NUM_FB_BUFFERS; i++) {
+			if (!hd->bo[i]) {
+				hd->bo[i] = bo;
+				break;
+			}
+		}
+	}
+
+	DrmCrtc *crtc = ctx->drm.GetCrtcForDisplay(id_);
+	if (!crtc) {
+		ALOGE("FATAL ERROR: can't get crtc for display %d", id_);
+		return -ENODEV;
+	}
+
+	DrmPlane *plane = ctx->drm.GetPrimaryPlaneForCrtc(*crtc);
+	if (!plane) {
+		ALOGE("FATAL ERROR: can't get primary plane for display %d", id_);
+		return -ENODEV;
+	}
+
+	drmModeAtomicReqPtr pset = drmModeAtomicAlloc();
+	if (!pset) {
+		ALOGE("Failed to allocate property set");
+		return -ENOMEM;
+	}
+
+	DrmConnector *connector = NULL;
+	connector = ctx->drm.GetConnectorForDisplay(id_);
+	if (!connector) {
+		ALOGE("Could not locate connector for display %d", id_);
+		return -ENODEV;
+	}
+	if (hd->needs_modeset) {
+		ret = drmModeAtomicAddProperty(pset, crtc->id(),
+									   crtc->mode_property().id(),
+									   hd->blob_id);
+		if (ret < 0) {
+			ALOGE("Failed to add blob %d to pset", hd->blob_id);
+			drmModeAtomicFree(pset);
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, connector->id(),
+									   connector->crtc_id_property().id(),
+									   crtc->id());
+		if (ret < 0) {
+			ALOGE("Failed to add conn/crtc id property to pset");
+			drmModeAtomicFree(pset);
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->crtc_property().id(),
+									   crtc->id());
+		if (ret < 0) {
+			ALOGE("Failed to add crtc id property for plane %d, ret %d",
+				  plane->id(), ret);
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->crtc_x_property().id(),
+									   displayFrame_.left);
+		if (ret < 0) {
+			ALOGE("Failed to add x property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->crtc_y_property().id(),
+									   displayFrame_.top);
+		if (ret < 0) {
+			ALOGE("Failed to add y property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->crtc_w_property().id(),
+									   displayFrame_.right -
+									   displayFrame_.left);
+		if (ret < 0) {
+			ALOGE("Failed to add w property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->crtc_h_property().id(),
+									   displayFrame_.bottom -
+									   displayFrame_.top);
+		if (ret < 0) {
+			ALOGE("Failed to add h property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->src_x_property().id(),
+									   displayFrame_.left);
+		if (ret < 0) {
+			ALOGE("Failed to add src x property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->src_y_property().id(),
+									   displayFrame_.top);
+		if (ret < 0) {
+			ALOGE("Failed to add src y property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->src_w_property().id(),
+									   displayFrame_.right -
+									   displayFrame_.left);
+		if (ret < 0) {
+			ALOGE("Failed to add src w property for plane %d", plane->id());
+			return ret;
+		}
+
+		ret = drmModeAtomicAddProperty(pset, plane->id(),
+									   plane->src_h_property().id(),
+									   displayFrame_.bottom -
+									   displayFrame_.top);
+		if (ret < 0) {
+			ALOGE("Failed to add src h property for plane %d", plane->id());
+			return ret;
+		}
+	}
+
+	ret = drmModeAtomicAddProperty(pset, plane->id(),
+								   plane->fb_property().id(),
+								   bo->fb_id);
+	if (ret < 0) {
+		ALOGE("Failed to add fb_id(%d) property for plane %d", bo->fb_id,
+			  plane->id());
+		return ret;
+	}
+	uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
+	ret = drmModeAtomicCommit(ctx->drm.fd(), pset, flags, &ctx->drm);
+	if (ret) {
+		ALOGE("Failed to commit pset ret=%d\n", ret);
+		drmModeAtomicFree(pset);
+		return ret;
+	}
+
+	drmModeAtomicFree(pset);
+
+	if (hd->needs_modeset) {
+		ret = ctx->drm.DestroyPropertyBlob(hd->old_blob_id);
+		if (ret) {
+			ALOGE("Failed to destroy old blob id %" PRIu32 "/%d",
+				  hd->old_blob_id, ret);
+			return ret;
+		}
+
+		connector->set_active_mode(hd->active_mode);
+		hd->old_blob_id = hd->blob_id;
+		hd->needs_modeset = false;
+
+		return ctx->drm.SetDpmsMode(id_, DRM_MODE_DPMS_ON);
+	}
+
+	return 0;
+}
 
 static void hwc_release_display(struct hwc_context_t *ctx, int display)
 {
@@ -310,6 +536,13 @@ static int hwc_initialize_display(struct hwc_context_t *ctx, int display)
 		return ret;
 	}
 
+	ret = hd->render_worker.Init(display, ctx);
+	if (ret) {
+		ALOGE("Failed to create render worker for display %d %d\n", display,
+			  ret);
+		return ret;
+	}
+
 	return 0;
 }
 
@@ -394,200 +627,6 @@ static int post_framebuffer(struct hwc_context_t *ctx, hwc_layer_1_t *fb_layer)
 	return -EINVAL;
 }
 
-static int render_fb(struct hwc_context_t *ctx, int display,
-					 hwc_layer_1_t *fb_layer)
-{
-	hwc_drm_display_t *hd = &ctx->displays[display];
-	hwc_drm_bo_t *bo = NULL;
-	int ret;
-
-	if (!fb_layer->handle)
-		return -EINVAL;
-
-	for (int i = 0; i < NUM_FB_BUFFERS; i++) {
-		if (hd->bo[i] &&
-			hd->bo[i]->priv == (void *)(fb_layer->handle)) {
-			bo = hd->bo[i];
-			break;
-		}
-	}
-
-	if (!bo) {
-		bo = new hwc_drm_bo_t();
-
-		ret = ctx->importer->ImportBuffer(fb_layer->handle, bo);
-		if (ret) {
-			ALOGE("FATAL ERROR: failed to ImportBuffer for %p",
-				  fb_layer->handle);
-			return ret;
-		}
-
-		for (int i = 0; i < NUM_FB_BUFFERS; i++) {
-			if (!hd->bo[i]) {
-				hd->bo[i] = bo;
-				break;
-			}
-		}
-	}
-
-	DrmCrtc *crtc = ctx->drm.GetCrtcForDisplay(display);
-	if (!crtc) {
-		ALOGE("FATAL ERROR: can't get crtc for display %d", display);
-		return -ENODEV;
-	}
-
-	DrmPlane *plane = ctx->drm.GetPrimaryPlaneForCrtc(*crtc);
-	if (!plane) {
-		ALOGE("FATAL ERROR: can't get primary plane for display %d", display);
-		return -ENODEV;
-	}
-
-	drmModeAtomicReqPtr pset = drmModeAtomicAlloc();
-	if (!pset) {
-		ALOGE("Failed to allocate property set");
-		return -ENOMEM;
-	}
-
-	DrmConnector *connector = NULL;
-	connector = ctx->drm.GetConnectorForDisplay(display);
-	if (!connector) {
-		ALOGE("Could not locate connector for display %d", display);
-		return -ENODEV;
-	}
-	if (hd->needs_modeset) {
-		ret = drmModeAtomicAddProperty(pset, crtc->id(),
-									   crtc->mode_property().id(),
-									   hd->blob_id);
-		if (ret < 0) {
-			ALOGE("Failed to add blob %d to pset", hd->blob_id);
-			drmModeAtomicFree(pset);
-			return ret;
-		}
-
-		ret = drmModeAtomicAddProperty(pset, connector->id(),
-									   connector->crtc_id_property().id(),
-									   crtc->id());
-		if (ret < 0) {
-			ALOGE("Failed to add conn/crtc id property to pset");
-			drmModeAtomicFree(pset);
-			return ret;
-		}
-
-		ret = drmModeAtomicAddProperty(pset, plane->id(),
-									   plane->crtc_property().id(),
-									   crtc->id());
-		if (ret < 0) {
-			ALOGE("Failed to add crtc id property for plane %d, ret %d",
-				  plane->id(), ret);
-			return ret;
-		}
-
-		ret = drmModeAtomicAddProperty(pset, plane->id(),
-									   plane->crtc_x_property().id(),
-									   fb_layer->displayFrame.left);
-		if (ret < 0) {
-			ALOGE("Failed to add x property for plane %d", plane->id());
-			return ret;
-		}
-
-		ret = drmModeAtomicAddProperty(pset, plane->id(),
-									   plane->crtc_y_property().id(),
-									   fb_layer->displayFrame.top);
-		if (ret < 0) {
-			ALOGE("Failed to add y property for plane %d", plane->id());
-			return ret;
-		}
-
-		ret = drmModeAtomicAddProperty(pset, plane->id(),
-									   plane->crtc_w_property().id(),
-									   fb_layer->displayFrame.right -
-									   fb_layer->displayFrame.left);
-		if (ret < 0) {
-			ALOGE("Failed to add w property for plane %d", plane->id());
-			return ret;
-		}
-
-		ret = drmModeAtomicAddProperty(pset, plane->id(),
-									   plane->crtc_h_property().id(),
-									   fb_layer->displayFrame.bottom -
-									   fb_layer->displayFrame.top);
-		if (ret < 0) {
-			ALOGE("Failed to add h property for plane %d", plane->id());
-			return ret;
-		}
-
-		ret = drmModeAtomicAddProperty(pset, plane->id(),
-									   plane->src_x_property().id(),
-									   fb_layer->displayFrame.left);
-		if (ret < 0) {
-			ALOGE("Failed to add src x property for plane %d", plane->id());
-			return ret;
-		}
-
-		ret = drmModeAtomicAddProperty(pset, plane->id(),
-									   plane->src_y_property().id(),
-									   fb_layer->displayFrame.top);
-		if (ret < 0) {
-			ALOGE("Failed to add src y property for plane %d", plane->id());
-			return ret;
-		}
-
-		ret = drmModeAtomicAddProperty(pset, plane->id(),
-									   plane->src_w_property().id(),
-									   fb_layer->displayFrame.right -
-									   fb_layer->displayFrame.left);
-		if (ret < 0) {
-			ALOGE("Failed to add src w property for plane %d", plane->id());
-			return ret;
-		}
-
-		ret = drmModeAtomicAddProperty(pset, plane->id(),
-									   plane->src_h_property().id(),
-									   fb_layer->displayFrame.bottom -
-									   fb_layer->displayFrame.top);
-		if (ret < 0) {
-			ALOGE("Failed to add src h property for plane %d", plane->id());
-			return ret;
-		}
-	}
-
-	ALOGV("fb_id: %d", bo->fb_id);
-	ret = drmModeAtomicAddProperty(pset, plane->id(),
-								   plane->fb_property().id(),
-								   bo->fb_id);
-	if (ret < 0) {
-		ALOGE("Failed to add fb_id(%d) property for plane %d", bo->fb_id,
-			  plane->id());
-		return ret;
-	}
-	uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
-	ret = drmModeAtomicCommit(ctx->drm.fd(), pset, flags, &ctx->drm);
-	if (ret) {
-		ALOGE("Failed to commit pset ret=%d\n", ret);
-		drmModeAtomicFree(pset);
-		return ret;
-	}
-
-	drmModeAtomicFree(pset);
-
-	if (hd->needs_modeset) {
-		ret = ctx->drm.DestroyPropertyBlob(hd->old_blob_id);
-		if (ret) {
-			ALOGE("Failed to destroy old blob id %" PRIu32 "/%d",
-				  hd->old_blob_id, ret);
-			return ret;
-		}
-
-		connector->set_active_mode(hd->active_mode);
-		hd->old_blob_id = hd->blob_id;
-		hd->needs_modeset = false;
-
-		return ctx->drm.SetDpmsMode(display, DRM_MODE_DPMS_ON);
-	}
-
-	return 0;
-}
-
 static int hwc_set(hwc_composer_device_1_t * /*dev*/, size_t /*num_displays*/,
 				   hwc_display_contents_1_t ** /*sf_display_contents*/)
 {
@@ -597,7 +636,12 @@ static int hwc_set(hwc_composer_device_1_t * /*dev*/, size_t /*num_displays*/,
 static int hwc_set_framebuffer_target(struct hwc_composer_device_1 *dev, int32_t id, hwc_layer_1_t *layer)
 {
 	struct hwc_context_t *ctx = (struct hwc_context_t *)&dev->common;
-	return render_fb(ctx, id, layer);
+
+	hwc_drm_display_t *hd = &ctx->displays[id];
+	hd->render_worker.SetDisplayFrame(layer->displayFrame);
+	hd->render_worker.QueueFB(layer->handle);
+
+	return 0;
 }
 
 static int hwc_event_control(struct hwc_composer_device_1 *dev, int display,
