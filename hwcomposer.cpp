@@ -379,6 +379,8 @@ static void hwc_release_display(struct hwc_context_t *ctx, int display)
 {
 	hwc_drm_display *hd = &ctx->displays[display];
 
+	hd->render_worker.ExitLocked();
+
 	/* Release All bo */
 	for (int i = 0; i < NUM_FB_BUFFERS; i++) {
 		if (hd->bo[i]) {
@@ -399,7 +401,7 @@ static int hwc_set_display_active_mode(struct hwc_context_t *ctx, int display,
 	}
 
 	hwc_drm_display_t *hd = &ctx->displays[display];
-	
+
 	struct drm_mode_modeinfo drm_mode;
 	memset(&drm_mode, 0, sizeof(drm_mode));
 	mode.ToDrmModeModeInfo(&drm_mode);
