@@ -357,7 +357,20 @@ int RenderWorker::Render(buffer_handle_t handle)
 			  plane->id());
 		return ret;
 	}
-	uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
+
+	uint32_t flags;
+
+	if (!hd->needs_modeset) {
+		flags = DRM_MODE_ATOMIC_TEST_ONLY;
+		ret = drmModeAtomicCommit(ctx->drm.fd(), pset, flags, &ctx->drm);
+		if (ret) {
+			ALOGE("Failed to test pset ret=%d\n", ret);
+			drmModeAtomicFree(pset);
+			return ret;
+		}
+	}
+
+	flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
 	ret = drmModeAtomicCommit(ctx->drm.fd(), pset, flags, &ctx->drm);
 	if (ret) {
 		ALOGE("Failed to commit pset ret=%d\n", ret);
