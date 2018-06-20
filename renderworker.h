@@ -90,6 +90,7 @@ public:
 		sync_timeline_fd_ = sw_sync_timeline_create();
 		buffer_ = NULL;
 		frame_count_ = 0;
+		stopping_ = false;
 
 		return InitWorker();
 	}
@@ -110,6 +111,18 @@ public:
 		if (queue_.isEmpty())
 			return NULL;
 		return queue_.dequeue();
+	}
+
+	void FlushFB() {
+		while (!queue_.isEmpty())
+			queue_.dequeue();
+	}
+
+	void StopRender() {
+		Lock();
+		stopping_ = true;
+		Unlock();
+		SignalLocked();
 	}
 
 	void SetDisplayFrame(hwc_rect_t &d) {
@@ -148,6 +161,7 @@ private:
 	int sync_fence_fd_;
 	buffer_handle_t buffer_;
 	unsigned frame_count_;
+	bool stopping_;
 };
 
 }

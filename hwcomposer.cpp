@@ -71,6 +71,7 @@ static int hwc_set_display_active_mode(struct hwc_context_t *ctx, int display,
 									   DrmMode &mode);
 
 static void hwc_release_display(struct hwc_context_t *ctx, int display);
+static void hwc_stop_render(struct hwc_context_t *ctx, int display);
 
 class DrmHotplugHandler: public DrmEventHandler {
 public:
@@ -114,6 +115,9 @@ public:
 					return;
 				}
 			} else {
+				if (conn->display() == 1)
+					hwc_stop_render(ctx_, conn->display());
+
 				int ret = drm_->SetDpmsMode(conn->display(), DRM_MODE_DPMS_OFF);
 				if (ret) {
 					ALOGE("Failed to set dpms mode off %d", ret);
@@ -176,6 +180,12 @@ void RenderWorker::Routine()
 		ret = Unlock();
 		if (ret)
 			ALOGE("Failed to unlock worker %d", ret);
+	}
+
+	if (stopping_ == true) {
+		FlushFB();
+		stopping_ = false;
+		return;
 	}
 
 	buffer_handle_t h = DequeueFB();
@@ -375,11 +385,15 @@ int RenderWorker::Render(buffer_handle_t handle)
 	return 0;
 }
 
+static void hwc_stop_render(struct hwc_context_t *ctx, int display)
+{
+	hwc_drm_display *hd = &ctx->displays[display];
+	hd->render_worker.StopRender();
+}
+
 static void hwc_release_display(struct hwc_context_t *ctx, int display)
 {
 	hwc_drm_display *hd = &ctx->displays[display];
-
-	hd->render_worker.ExitLocked();
 
 	/* Release All bo */
 	for (int i = 0; i < NUM_FB_BUFFERS; i++) {
