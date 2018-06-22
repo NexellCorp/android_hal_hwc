@@ -142,6 +142,7 @@ int NexellImporter::ImportBuffer(buffer_handle_t handle, hwc_drm_bo_t *bo)
 		return ret;
 	}
 
+	ALOGD("[nexellimporter] IMPORT %p", bo);
 	return ret;
 }
 
@@ -165,6 +166,7 @@ int NexellImporter::ReleaseBuffer(hwc_drm_bo_t *bo)
 		else
 			bo->gem_handles[i] = 0;
 	}
+	ALOGD("[nexellimporter] RELEASE %p", bo);
 	return 0;
 }
 

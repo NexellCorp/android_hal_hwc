@@ -65,6 +65,7 @@ typedef struct hwc_drm_display {
 	bool needs_modeset;
 	uint32_t blob_id;
 	uint32_t old_blob_id;
+	bool active;
 } hwc_drm_display_t;
 
 static int hwc_set_display_active_mode(struct hwc_context_t *ctx, int display,
@@ -202,6 +203,11 @@ int RenderWorker::Render(buffer_handle_t handle)
 	hwc_drm_display_t *hd = &ctx->displays[id_];
 	hwc_drm_bo_t *bo = NULL;
 	int ret;
+
+	if (hd->active == false) {
+		ALOGE("%s: display %d is non-active, return", __func__, id_);
+		return 0;
+	}
 
 	for (int i = 0; i < NUM_FB_BUFFERS; i++) {
 		if (hd->bo[i] &&
@@ -402,6 +408,7 @@ static void hwc_stop_render(struct hwc_context_t *ctx, int display)
 {
 	hwc_drm_display *hd = &ctx->displays[display];
 	hd->render_worker.StopRender();
+	hd->active = false;
 }
 
 static void hwc_release_display(struct hwc_context_t *ctx, int display)
@@ -445,6 +452,7 @@ static int hwc_set_display_active_mode(struct hwc_context_t *ctx, int display,
 	hd->needs_modeset = true;
 	hd->blob_id = id;
 	hd->active_mode = mode;
+	hd->active = true;
 
 	connector->set_active_mode(hd->active_mode);
 	return 0;
