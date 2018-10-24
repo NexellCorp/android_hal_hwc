@@ -75,6 +75,8 @@ private:
     std::mutex mutex;
 };
 
+// #define USE_SYNC
+
 class RenderWorker: public Worker {
 public:
     RenderWorker():
@@ -85,9 +87,11 @@ public:
     int Init(int32_t id, void *ctx) {
         id_ = id;
         ctx_ = ctx;
+#ifdef USE_SYNC
         sync_fence_fd_ = -1;
         next_sync_point_ = 1;
         sync_timeline_fd_ = sw_sync_timeline_create();
+#endif
         buffer_ = NULL;
         frame_count_ = 0;
 
@@ -116,6 +120,7 @@ public:
         memcpy(&displayFrame_, &d, sizeof(d));
     }
 
+#ifdef USE_SYNC
     int CreateSyncFence() {
         char str[256] = {0, };
 
@@ -132,6 +137,7 @@ public:
         sw_sync_timeline_inc(sync_timeline_fd_, 1);
         next_sync_point_++;
     }
+#endif
 
 protected:
     void Routine() override;
@@ -143,9 +149,11 @@ private:
     void *ctx_;
     NXQueue<buffer_handle_t> queue_;
     hwc_rect_t displayFrame_;
+#ifdef USE_SYNC
     unsigned next_sync_point_;
     int sync_timeline_fd_;
     int sync_fence_fd_;
+#endif
     buffer_handle_t buffer_;
     unsigned frame_count_;
 };
