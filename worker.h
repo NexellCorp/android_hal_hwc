@@ -25,50 +25,50 @@ namespace android {
 
 class Worker {
 public:
-	int Lock();
-	int Unlock();
+    int Lock();
+    int Unlock();
 
-	// Must be called with the lock acquired
-	int SignalLocked();
-	int ExitLocked();
+    // Must be called with the lock acquired
+    int SignalLocked();
+    int ExitLocked();
 
-	// Convenience versions of above, acquires the lock
-	int Signal();
-	int Exit();
+    // Convenience versions of above, acquires the lock
+    int Signal();
+    int Exit();
 
 protected:
-	Worker(const char *name, int priority);
-	virtual ~Worker();
+    Worker(const char *name, int priority);
+    virtual ~Worker();
 
-	int InitWorker();
+    int InitWorker();
 
-	bool initialized() const;
+    bool initialized() const;
 
-	virtual void Routine() = 0;
+    virtual void Routine() = 0;
 
-	/*
-		* Must be called with the lock acquired. max_nanoseconds may be negative to
-		* indicate infinite timeout, otherwise it indicates the maximum time span to
-		* wait for a signal before returning.
-		* Returns -EINTR if interrupted by exit request, or -ETIMEDOUT if timed out
-		*/
-	int WaitForSignalOrExitLocked(int64_t max_nanoseconds = -1);
+    /*
+     * Must be called with the lock acquired. max_nanoseconds may be negative to
+     * indicate infinite timeout, otherwise it indicates the maximum time span to
+     * wait for a signal before returning.
+     * Returns -EINTR if interrupted by exit request, or -ETIMEDOUT if timed out
+     */
+    int WaitForSignalOrExitLocked(int64_t max_nanoseconds = -1);
 
 private:
-	static void *InternalRoutine(void *worker);
+    static void *InternalRoutine(void *worker);
 
-	// Must be called with the lock acquired
-	int SignalThreadLocked(bool exit);
+    // Must be called with the lock acquired
+    int SignalThreadLocked(bool exit);
 
-	std::string name_;
-	int priority_;
+    std::string name_;
+    int priority_;
 
-	pthread_t thread_;
-	pthread_mutex_t lock_;
-	pthread_cond_t cond_;
+    pthread_t thread_;
+    pthread_mutex_t lock_;
+    pthread_cond_t cond_;
 
-	bool exit_;
-	bool initialized_;
+    bool exit_;
+    bool initialized_;
 };
 
 } // namespace android

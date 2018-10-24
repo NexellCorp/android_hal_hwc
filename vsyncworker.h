@@ -30,27 +30,27 @@ namespace android {
 
 class VSyncWorker : public Worker {
 public:
-	VSyncWorker();
-	~VSyncWorker() override;
+    VSyncWorker();
+    ~VSyncWorker() override;
 
-	int Init(DrmResources *drm, int display);
-	int SetProcs(hwc_procs_t const *procs);
+    int Init(DrmResources *drm, int display);
+    int SetProcs(hwc_procs_t const *procs);
 
-	int VSyncControl(bool enabled);
+    int VSyncControl(bool enabled);
 
 protected:
-	void Routine() override;
+    void Routine() override;
 
 private:
-	int64_t GetPhasedVSync(int64_t frame_ns, int64_t current);
-	int SyntheticWaitVBlank(int64_t *timestamp);
+    int64_t GetPhasedVSync(int64_t frame_ns, int64_t current);
+    int SyntheticWaitVBlank(int64_t *timestamp);
 
-	DrmResources *drm_;
-	hwc_procs_t const *procs_;
+    DrmResources *drm_;
+    hwc_procs_t const *procs_;
 
-	int display_;
-	bool enabled_;
-	int64_t last_timestamp_;
+    int display_;
+    bool enabled_;
+    int64_t last_timestamp_;
 };
 
 } // namespace android

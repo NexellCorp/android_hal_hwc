@@ -29,40 +29,34 @@ class DrmResources;
 
 class DrmCrtc {
 public:
-	DrmCrtc(DrmResources *drm, drmModeCrtcPtr c, unsigned pipe);
-	DrmCrtc(const DrmCrtc &) = delete;
-	DrmCrtc &operator=(const DrmCrtc &) = delete;
+    DrmCrtc(DrmResources *drm, drmModeCrtcPtr c, unsigned pipe);
+    DrmCrtc(const DrmCrtc &) = delete;
+    DrmCrtc &operator=(const DrmCrtc &) = delete;
 
-	int Init();
+    int Init();
 
-	uint32_t id() const;
-	unsigned pipe() const;
+    uint32_t id() const;
+    unsigned pipe() const;
 
-	int display() const;
-	void set_display(int display);
+    int display() const;
+    void set_display(int display);
 
-	bool can_bind(int display) const;
+    bool can_bind(int display) const;
 
-	const DrmProperty &active_property() const;
-	const DrmProperty &mode_property() const;
+    const DrmProperty &active_property() const;
+    const DrmProperty &mode_property() const;
 
 private:
-	DrmResources *drm_;
+    DrmResources *drm_;
 
-	uint32_t id_;
-	unsigned pipe_;
-	int display_;
+    uint32_t id_;
+    unsigned pipe_;
+    int display_;
 
-	uint32_t x_;
-	uint32_t y_;
-	uint32_t width_;
-	uint32_t height_;
+    DrmMode mode_;
 
-	DrmMode mode_;
-	bool mode_valid_;
-
-	DrmProperty active_property_;
-	DrmProperty mode_property_;
+    DrmProperty active_property_;
+    DrmProperty mode_property_;
 };
 
 }

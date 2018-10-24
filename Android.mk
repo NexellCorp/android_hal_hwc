@@ -13,50 +13,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ifeq ($(strip $(BOARD_USES_NX_HWCOMPOSER)),true)
-
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_PRELINK_MODULE := false
 
 LOCAL_MODULE_RELATIVE_PATH := hw
-LOCAL_MODULE := hwcomposer.$(TARGET_BOOTLOADER_BOARD_NAME)
+LOCAL_MODULE := hwcomposer.$(TARGET_BOARD_PLATFORM)
+LOCAL_VENDOR_MODULE := true
 
 LOCAL_SHARED_LIBRARIES := \
-	liblog \
-	libsync \
-	libcutils \
-	libhardware \
-	libhardware_legacy \
-	libutils \
-	libbinder \
-	libdrm
+    liblog \
+    libsync \
+    libcutils \
+    libhardware \
+    libhardware_legacy \
+    libutils \
+    libbinder \
+    libdrm
 
 LOCAL_C_INCLUDES := \
-	frameworks/native/include \
-	system/core/include \
-	hardware/libhardware/include \
-	external/libdrm \
-	external/libdrm/include/drm \
-	system/core/include/utils \
-	system/core/libsync \
-	system/core/libsync/include \
-	$(LOCAL_PATH)/../gralloc
+    frameworks/native/include \
+    system/core/include \
+    hardware/libhardware/include \
+    external/libdrm \
+    external/libdrm/include/drm \
+    system/core/include/utils \
+    system/core/libsync \
+    system/core/libsync/include \
+    $(LOCAL_PATH)/../gralloc
 
 LOCAL_SRC_FILES := \
-	drmmode.cpp \
-	drmproperty.cpp \
-	drmconnector.cpp \
-	drmcrtc.cpp \
-	drmencoder.cpp \
-	drmplane.cpp \
-	drmresources.cpp \
-	worker.cpp \
-	vsyncworker.cpp \
-	drmeventlistener.cpp \
-	nexellimporter.cpp \
-	hwcomposer.cpp
+    drmmode.cpp \
+    drmproperty.cpp \
+    drmconnector.cpp \
+    drmcrtc.cpp \
+    drmencoder.cpp \
+    drmplane.cpp \
+    drmresources.cpp \
+    worker.cpp \
+    vsyncworker.cpp \
+    drmeventlistener.cpp \
+    nexellimporter.cpp \
+    hwcomposer.cpp
 
 include $(BUILD_SHARED_LIBRARY)
-
-endif #ifeq ($(strip $(BOARD_USES_NX_HWCOMPOSER)),true)

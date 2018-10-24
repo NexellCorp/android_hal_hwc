@@ -27,27 +27,24 @@ namespace android {
 
 class DrmEncoder {
 public:
-	DrmEncoder(drmModeEncoderPtr e, DrmCrtc *current_crtc,
-				const std::vector<DrmCrtc *> &possible_crtcs);
-	DrmEncoder(const DrmEncoder &) = delete;
-	DrmEncoder &operator=(const DrmEncoder &) = delete;
+    DrmEncoder(drmModeEncoderPtr e, DrmCrtc *current_crtc,
+                const std::vector<DrmCrtc *> &possible_crtcs);
+    DrmEncoder(const DrmEncoder &) = delete;
+    DrmEncoder &operator=(const DrmEncoder &) = delete;
 
-	uint32_t id() const;
+    uint32_t id() const;
 
-	DrmCrtc *crtc() const;
-	void set_crtc(DrmCrtc *crtc);
+    DrmCrtc *crtc() const;
+    void set_crtc(DrmCrtc *crtc);
 
-	const std::vector<DrmCrtc *> &possible_crtcs() const {
-		return possible_crtcs_;
-	}
+    const std::vector<DrmCrtc *> &possible_crtcs() const {
+        return possible_crtcs_;
+    }
 
 private:
-	uint32_t id_;
-	DrmCrtc *crtc_;
-
-	uint32_t type_;
-
-	std::vector<DrmCrtc *> possible_crtcs_;
+    uint32_t id_;
+    DrmCrtc *crtc_;
+    std::vector<DrmCrtc *> possible_crtcs_;
 };
 
 }

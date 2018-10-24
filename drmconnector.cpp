@@ -28,133 +28,133 @@
 namespace android {
 
 DrmConnector::DrmConnector(DrmResources *drm, drmModeConnectorPtr c,
-						   DrmEncoder *current_encoder,
-						   std::vector<DrmEncoder *> &possible_encoders)
-	: drm_(drm),
-	id_(c->connector_id),
-	encoder_(current_encoder),
-	display_(-1),
-	type_(c->connector_type),
-	state_(c->connection),
-	mm_width_(c->mmWidth),
-	mm_height_(c->mmHeight),
-	possible_encoders_(possible_encoders)
+                           DrmEncoder *current_encoder,
+                           std::vector<DrmEncoder *> &possible_encoders)
+    : drm_(drm),
+    id_(c->connector_id),
+    encoder_(current_encoder),
+    display_(-1),
+    type_(c->connector_type),
+    state_(c->connection),
+    mm_width_(c->mmWidth),
+    mm_height_(c->mmHeight),
+    possible_encoders_(possible_encoders)
 {
 }
 
 int DrmConnector::Init()
 {
-	int ret = drm_->GetConnectorProperty(*this, "DPMS", &dpms_property_);
-	if (ret) {
-		ALOGE("Could not get DPMS property\n");
-		return ret;
-	}
-	ret = drm_->GetConnectorProperty(*this, "CRTC_ID", &crtc_id_property_);
-	if (ret) {
-		ALOGE("Could not get CRTC_ID property\n");
-		return ret;
-	}
-	return 0;
+    int ret = drm_->GetConnectorProperty(*this, "DPMS", &dpms_property_);
+    if (ret) {
+        ALOGE("Could not get DPMS property\n");
+        return ret;
+    }
+    ret = drm_->GetConnectorProperty(*this, "CRTC_ID", &crtc_id_property_);
+    if (ret) {
+        ALOGE("Could not get CRTC_ID property\n");
+        return ret;
+    }
+    return 0;
 }
 
 uint32_t DrmConnector::id() const
 {
-	return id_;
+    return id_;
 }
 
 int DrmConnector::display() const
 {
-	return display_;
+    return display_;
 }
 
 void DrmConnector::set_display(int display)
 {
-	display_ = display;
+    display_ = display;
 }
 
 bool DrmConnector::built_in() const
 {
-	return type_ == DRM_MODE_CONNECTOR_LVDS ||
-		type_ == DRM_MODE_CONNECTOR_eDP ||
-		type_ == DRM_MODE_CONNECTOR_DSI;
+    return type_ == DRM_MODE_CONNECTOR_LVDS ||
+        type_ == DRM_MODE_CONNECTOR_eDP ||
+        type_ == DRM_MODE_CONNECTOR_DSI;
 }
 
 int DrmConnector::UpdateModes()
 {
-	int fd = drm_->fd();
+    int fd = drm_->fd();
 
-	drmModeConnectorPtr c = drmModeGetConnector(fd, id_);
-	if (!c) {
-		ALOGE("Failed to get connector %d", id_);
-		return -ENODEV;
-	}
+    drmModeConnectorPtr c = drmModeGetConnector(fd, id_);
+    if (!c) {
+        ALOGE("Failed to get connector %d", id_);
+        return -ENODEV;
+    }
 
-	state_ = c->connection;
+    state_ = c->connection;
 
-	std::vector<DrmMode> new_modes;
-	for (int i = 0; i < c->count_modes; ++i) {
-		bool exists = false;
-		for (const DrmMode &mode : modes_) {
-			if (mode == c->modes[i]) {
-				new_modes.push_back(mode);
-				exists = true;
-				break;
-			}
-		}
-		if (exists)
-			continue;
+    std::vector<DrmMode> new_modes;
+    for (int i = 0; i < c->count_modes; ++i) {
+        bool exists = false;
+        for (const DrmMode &mode : modes_) {
+            if (mode == c->modes[i]) {
+                new_modes.push_back(mode);
+                exists = true;
+                break;
+            }
+        }
+        if (exists)
+            continue;
 
-		DrmMode m(&c->modes[i]);
-		m.set_id(drm_->next_mode_id());
-		new_modes.push_back(m);
-	}
-	modes_.swap(new_modes);
-	return 0;
+        DrmMode m(&c->modes[i]);
+        m.set_id(drm_->next_mode_id());
+        new_modes.push_back(m);
+    }
+    modes_.swap(new_modes);
+    return 0;
 }
 
 const DrmMode &DrmConnector::active_mode() const
 {
-	return active_mode_;
+    return active_mode_;
 }
 
 void DrmConnector::set_active_mode(const DrmMode &mode)
 {
-	active_mode_ = mode;
+    active_mode_ = mode;
 }
 
 const DrmProperty &DrmConnector::dpms_property() const
 {
-	return dpms_property_;
+    return dpms_property_;
 }
 
 const DrmProperty &DrmConnector::crtc_id_property() const
 {
-	return crtc_id_property_;
+    return crtc_id_property_;
 }
 
 DrmEncoder *DrmConnector::encoder() const
 {
-	return encoder_;
+    return encoder_;
 }
 
 void DrmConnector::set_encoder(DrmEncoder *encoder)
 {
-	encoder_ = encoder;
+    encoder_ = encoder;
 }
 
 drmModeConnection DrmConnector::state() const
 {
-	return state_;
+    return state_;
 }
 
 uint32_t DrmConnector::mm_width() const
 {
-	return mm_width_;
+    return mm_width_;
 }
 
 uint32_t DrmConnector::mm_height() const
 {
-	return mm_height_;
+    return mm_height_;
 }
 
 }

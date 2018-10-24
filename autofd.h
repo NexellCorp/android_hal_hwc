@@ -23,83 +23,83 @@ namespace android {
 
 class UniqueFd {
 public:
-	UniqueFd() = default;
-	UniqueFd(int fd) : fd_(fd) {
-	}
-	UniqueFd(UniqueFd &&rhs) {
-		fd_ = rhs.fd_;
-		rhs.fd_ = -1;
-	}
+    UniqueFd() = default;
+    UniqueFd(int fd) : fd_(fd) {
+    }
+    UniqueFd(UniqueFd &&rhs) {
+        fd_ = rhs.fd_;
+        rhs.fd_ = -1;
+    }
 
-	UniqueFd &operator=(UniqueFd &&rhs) {
-		Set(rhs.Release());
-		return *this;
-	}
+    UniqueFd &operator=(UniqueFd &&rhs) {
+        Set(rhs.Release());
+        return *this;
+    }
 
-	~UniqueFd() {
-		if (fd_ >= 0)
-			close(fd_);
-	}
+    ~UniqueFd() {
+        if (fd_ >= 0)
+            close(fd_);
+    }
 
-	int Release() {
-		int old_fd = fd_;
-		fd_ = -1;
-		return old_fd;
-	}
+    int Release() {
+        int old_fd = fd_;
+        fd_ = -1;
+        return old_fd;
+    }
 
-	int Set(int fd) {
-		if (fd_ >= 0)
-			close(fd_);
-		fd_ = fd;
-		return fd_;
-	}
+    int Set(int fd) {
+        if (fd_ >= 0)
+            close(fd_);
+        fd_ = fd;
+        return fd_;
+    }
 
-	void Close() {
-		if (fd_ >= 0)
-			close(fd_);
-		fd_ = -1;
-	}
+    void Close() {
+        if (fd_ >= 0)
+            close(fd_);
+        fd_ = -1;
+    }
 
-	int get() const {
-		return fd_;
-	}
+    int get() const {
+        return fd_;
+    }
 
 private:
-	int fd_ = -1;
+    int fd_ = -1;
 };
 
 struct OutputFd {
-	OutputFd() = default;
-	OutputFd(int *fd) : fd_(fd) {
-	}
-	OutputFd(OutputFd &&rhs) {
-		fd_ = rhs.fd_;
-		rhs.fd_ = NULL;
-	}
+    OutputFd() = default;
+    OutputFd(int *fd) : fd_(fd) {
+    }
+    OutputFd(OutputFd &&rhs) {
+        fd_ = rhs.fd_;
+        rhs.fd_ = NULL;
+    }
 
-	OutputFd &operator=(OutputFd &&rhs) {
-		fd_ = rhs.fd_;
-		rhs.fd_ = NULL;
-		return *this;
-	}
+    OutputFd &operator=(OutputFd &&rhs) {
+        fd_ = rhs.fd_;
+        rhs.fd_ = NULL;
+        return *this;
+    }
 
-	int Set(int fd) {
-		if (*fd_ >= 0)
-			close(*fd_);
-		*fd_ = fd;
-		return fd;
-	}
+    int Set(int fd) {
+        if (*fd_ >= 0)
+            close(*fd_);
+        *fd_ = fd;
+        return fd;
+    }
 
-	int get() {
-		return *fd_;
-	}
+    int get() {
+        return *fd_;
+    }
 
-	operator bool() const {
-		return fd_ != NULL;
-	}
+    operator bool() const {
+        return fd_ != NULL;
+    }
 
 private:
-	int *fd_ = NULL;
+    int *fd_ = NULL;
 };
 
 }

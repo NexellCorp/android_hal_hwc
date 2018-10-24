@@ -26,40 +26,40 @@ class DrmResources;
 
 class DrmEventHandler {
 public:
-	DrmEventHandler() {
-	}
-	virtual ~DrmEventHandler() {
-	}
+    DrmEventHandler() {
+    }
+    virtual ~DrmEventHandler() {
+    }
 
-	virtual void HandleEvent(uint64_t timestamp_us) = 0;
+    virtual void HandleEvent(uint64_t timestamp_us) = 0;
 };
 
 class DrmEventListener : public Worker {
 public:
-	DrmEventListener(DrmResources *drm);
-	virtual ~DrmEventListener() {
-	}
+    DrmEventListener(DrmResources *drm);
+    virtual ~DrmEventListener() {
+    }
 
-	int Init();
+    int Init();
 
-	void RegisterHotplugHandler(DrmEventHandler *handler);
+    void RegisterHotplugHandler(DrmEventHandler *handler);
 
-	static void FlipHandler(int fd, unsigned int sequence,
-							unsigned int tv_sec, unsigned int tv_usec,
-							void *user_data);
+    static void FlipHandler(int fd, unsigned int sequence,
+                            unsigned int tv_sec, unsigned int tv_usec,
+                            void *user_data);
 
 protected:
-	virtual void Routine();
+    virtual void Routine();
 
 private:
-	void UEventHandler();
+    void UEventHandler();
 
-	fd_set fds_;
-	UniqueFd uevent_fd_;
-	int max_fd_ = -1;
+    fd_set fds_;
+    UniqueFd uevent_fd_;
+    int max_fd_ = -1;
 
-	DrmResources *drm_;
-	DrmEventHandler *hotplug_handler_ = NULL;
+    DrmResources *drm_;
+    DrmEventHandler *hotplug_handler_ = NULL;
 };
 
 } // namespace android

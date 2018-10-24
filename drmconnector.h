@@ -31,63 +31,63 @@ class DrmResources;
 
 class DrmConnector {
 public:
-	DrmConnector(DrmResources *drm, drmModeConnectorPtr c,
-				 DrmEncoder *current_encoder,
-				 std::vector<DrmEncoder *> &possible_encoders);
-	DrmConnector(const DrmProperty &) = delete;
-	DrmConnector &operator=(const DrmProperty &) = delete;
+    DrmConnector(DrmResources *drm, drmModeConnectorPtr c,
+                 DrmEncoder *current_encoder,
+                 std::vector<DrmEncoder *> &possible_encoders);
+    DrmConnector(const DrmProperty &) = delete;
+    DrmConnector &operator=(const DrmProperty &) = delete;
 
-	int Init();
+    int Init();
 
-	uint32_t id() const;
+    uint32_t id() const;
 
-	int display() const;
-	void set_display(int display);
+    int display() const;
+    void set_display(int display);
 
-	bool built_in() const;
+    bool built_in() const;
 
-	int UpdateModes();
+    int UpdateModes();
 
-	const std::vector<DrmMode> &modes() const {
-		return modes_;
-	}
-	const DrmMode &active_mode() const;
-	void set_active_mode(const DrmMode &mode);
+    const std::vector<DrmMode> &modes() const {
+        return modes_;
+    }
+    const DrmMode &active_mode() const;
+    void set_active_mode(const DrmMode &mode);
 
-	const DrmProperty &dpms_property() const;
-	const DrmProperty &crtc_id_property() const;
+    const DrmProperty &dpms_property() const;
+    const DrmProperty &crtc_id_property() const;
 
-	const std::vector<DrmEncoder *> &possible_encoders() const {
-		return possible_encoders_;
-	}
-	DrmEncoder *encoder() const;
-	void set_encoder(DrmEncoder *encoder);
+    const std::vector<DrmEncoder *> &possible_encoders() const {
+        return possible_encoders_;
+    }
+    DrmEncoder *encoder() const;
+    void set_encoder(DrmEncoder *encoder);
 
-	drmModeConnection state() const;
+    drmModeConnection state() const;
 
-	uint32_t mm_width() const;
-	uint32_t mm_height() const;
+    uint32_t mm_width() const;
+    uint32_t mm_height() const;
 
 private:
-	DrmResources *drm_;
+    DrmResources *drm_;
 
-	uint32_t id_;
-	DrmEncoder *encoder_;
-	int display_;
+    uint32_t id_;
+    DrmEncoder *encoder_;
+    int display_;
 
-	uint32_t type_;
-	drmModeConnection state_;
+    uint32_t type_;
+    drmModeConnection state_;
 
-	uint32_t mm_width_;
-	uint32_t mm_height_;
+    uint32_t mm_width_;
+    uint32_t mm_height_;
 
-	DrmMode active_mode_;
-	std::vector<DrmMode> modes_;
+    DrmMode active_mode_;
+    std::vector<DrmMode> modes_;
 
-	DrmProperty dpms_property_;
-	DrmProperty crtc_id_property_;
+    DrmProperty dpms_property_;
+    DrmProperty crtc_id_property_;
 
-	std::vector<DrmEncoder *> possible_encoders_;
+    std::vector<DrmEncoder *> possible_encoders_;
 };
 
 }

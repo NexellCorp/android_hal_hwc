@@ -30,51 +30,51 @@ class DrmResources;
 
 class DrmPlane {
 public:
-	DrmPlane(DrmResources *drm, drmModePlanePtr p);
-	DrmPlane(const DrmPlane &) = delete;
-	DrmPlane &operator=(const DrmPlane &) = delete;
+    DrmPlane(DrmResources *drm, drmModePlanePtr p);
+    DrmPlane(const DrmPlane &) = delete;
+    DrmPlane &operator=(const DrmPlane &) = delete;
 
-	int Init();
+    int Init();
 
-	uint32_t id() const;
+    uint32_t id() const;
 
-	bool GetCrtcSupported(const DrmCrtc &crtc) const;
+    bool GetCrtcSupported(const DrmCrtc &crtc) const;
 
-	uint32_t type() const;
+    uint32_t type() const;
 
-	const DrmProperty &crtc_property() const;
-	const DrmProperty &fb_property() const;
-	const DrmProperty &crtc_x_property() const;
-	const DrmProperty &crtc_y_property() const;
-	const DrmProperty &crtc_w_property() const;
-	const DrmProperty &crtc_h_property() const;
-	const DrmProperty &src_x_property() const;
-	const DrmProperty &src_y_property() const;
-	const DrmProperty &src_w_property() const;
-	const DrmProperty &src_h_property() const;
-	const DrmProperty &rotation_property() const;
-	const DrmProperty &alpha_property() const;
+    const DrmProperty &crtc_property() const;
+    const DrmProperty &fb_property() const;
+    const DrmProperty &crtc_x_property() const;
+    const DrmProperty &crtc_y_property() const;
+    const DrmProperty &crtc_w_property() const;
+    const DrmProperty &crtc_h_property() const;
+    const DrmProperty &src_x_property() const;
+    const DrmProperty &src_y_property() const;
+    const DrmProperty &src_w_property() const;
+    const DrmProperty &src_h_property() const;
+    const DrmProperty &rotation_property() const;
+    const DrmProperty &alpha_property() const;
 
 private:
-	DrmResources *drm_;
-	uint32_t id_;
+    DrmResources *drm_;
+    uint32_t id_;
 
-	uint32_t possible_crtc_mask_;
+    uint32_t possible_crtc_mask_;
 
-	uint32_t type_;
+    uint32_t type_;
 
-	DrmProperty crtc_property_;
-	DrmProperty fb_property_;
-	DrmProperty crtc_x_property_;
-	DrmProperty crtc_y_property_;
-	DrmProperty crtc_w_property_;
-	DrmProperty crtc_h_property_;
-	DrmProperty src_x_property_;
-	DrmProperty src_y_property_;
-	DrmProperty src_w_property_;
-	DrmProperty src_h_property_;
-	DrmProperty rotation_property_;
-	DrmProperty alpha_property_;
+    DrmProperty crtc_property_;
+    DrmProperty fb_property_;
+    DrmProperty crtc_x_property_;
+    DrmProperty crtc_y_property_;
+    DrmProperty crtc_w_property_;
+    DrmProperty crtc_h_property_;
+    DrmProperty src_x_property_;
+    DrmProperty src_y_property_;
+    DrmProperty src_w_property_;
+    DrmProperty src_h_property_;
+    DrmProperty rotation_property_;
+    DrmProperty alpha_property_;
 };
 
 }

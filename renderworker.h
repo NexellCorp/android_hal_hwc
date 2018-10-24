@@ -33,121 +33,121 @@ template <class T>
 class NXQueue
 {
 public:
-	NXQueue() {
-	};
+    NXQueue() {
+    };
 
-	virtual ~NXQueue() {
-	}
+    virtual ~NXQueue() {
+    }
 
-	void queue(const T& item) {
-		std::lock_guard<std::mutex> guard(mutex);
-		q.push(item);
-	}
+    void queue(const T& item) {
+        std::lock_guard<std::mutex> guard(mutex);
+        q.push(item);
+    }
 
-	const T& dequeue() {
-		std::lock_guard<std::mutex> guard(mutex);
-		const T& item = q.front();
-		q.pop();
-		return item;
-	}
+    const T& dequeue() {
+        std::lock_guard<std::mutex> guard(mutex);
+        const T& item = q.front();
+        q.pop();
+        return item;
+    }
 
-	void pop() {
-		q.pop();
-	}
+    void pop() {
+        q.pop();
+    }
 
-	bool isEmpty() {
-		std::lock_guard<std::mutex> guard(mutex);
-		return q.empty();
-	}
+    bool isEmpty() {
+        std::lock_guard<std::mutex> guard(mutex);
+        return q.empty();
+    }
 
-	size_t size() {
-		std::lock_guard<std::mutex> guard(mutex);
-		return q.size();
-	}
+    size_t size() {
+        std::lock_guard<std::mutex> guard(mutex);
+        return q.size();
+    }
 
-	const T& getHead() {
-		std::lock_guard<std::mutex> guard(mutex);
-		return q.front();
-	}
+    const T& getHead() {
+        std::lock_guard<std::mutex> guard(mutex);
+        return q.front();
+    }
 
 private:
-	std::queue<T> q;
-	std::mutex mutex;
+    std::queue<T> q;
+    std::mutex mutex;
 };
 
 class RenderWorker: public Worker {
 public:
-	RenderWorker():
-		Worker("drm-rendere", HAL_PRIORITY_URGENT_DISPLAY) {
-	}
-	~RenderWorker() override;
+    RenderWorker():
+        Worker("drm-rendere", HAL_PRIORITY_URGENT_DISPLAY) {
+    }
+    ~RenderWorker() override;
 
-	int Init(int32_t id, void *ctx) {
-		id_ = id;
-		ctx_ = ctx;
-		sync_fence_fd_ = -1;
-		next_sync_point_ = 1;
-		sync_timeline_fd_ = sw_sync_timeline_create();
-		buffer_ = NULL;
-		frame_count_ = 0;
+    int Init(int32_t id, void *ctx) {
+        id_ = id;
+        ctx_ = ctx;
+        sync_fence_fd_ = -1;
+        next_sync_point_ = 1;
+        sync_timeline_fd_ = sw_sync_timeline_create();
+        buffer_ = NULL;
+        frame_count_ = 0;
 
-		return InitWorker();
-	}
+        return InitWorker();
+    }
 
-	void QueueFB(buffer_handle_t buffer) {
-		queue_.queue(buffer);
-		/* HACK
-		 * SurfaceFlinger starts all display rendering by Primary VSync Event
-		 * So, if Secondary Display is slower than Primary, buffer is
-		 * accumulated. Below code is workaround for this situation.
-		 */
-		if (id_ == 1 && queue_.size() >= 2)
-			queue_.pop();
-		Signal();
-	}
+    void QueueFB(buffer_handle_t buffer) {
+        queue_.queue(buffer);
+        /* HACK
+         * SurfaceFlinger starts all display rendering by Primary VSync Event
+         * So, if Secondary Display is slower than Primary, buffer is
+         * accumulated. Below code is workaround for this situation.
+         */
+        if (id_ == 1 && queue_.size() >= 2)
+            queue_.pop();
+        Signal();
+    }
 
-	buffer_handle_t DequeueFB() {
-		if (queue_.isEmpty())
-			return NULL;
-		return queue_.dequeue();
-	}
+    buffer_handle_t DequeueFB() {
+        if (queue_.isEmpty())
+            return NULL;
+        return queue_.dequeue();
+    }
 
-	void SetDisplayFrame(hwc_rect_t &d) {
-		memcpy(&displayFrame_, &d, sizeof(d));
-	}
+    void SetDisplayFrame(hwc_rect_t &d) {
+        memcpy(&displayFrame_, &d, sizeof(d));
+    }
 
-	int CreateSyncFence() {
-		char str[256] = {0, };
+    int CreateSyncFence() {
+        char str[256] = {0, };
 
-		if (sync_fence_fd_ >= 0)
-			close(sync_fence_fd_);
+        if (sync_fence_fd_ >= 0)
+            close(sync_fence_fd_);
 
-		sprintf(str, "render fence %d", next_sync_point_);
-		sync_fence_fd_ = sw_sync_fence_create(sync_timeline_fd_, str,
-											  next_sync_point_);
-		return dup(sync_fence_fd_);
-	}
+        sprintf(str, "render fence %d", next_sync_point_);
+        sync_fence_fd_ = sw_sync_fence_create(sync_timeline_fd_, str,
+                                              next_sync_point_);
+        return dup(sync_fence_fd_);
+    }
 
-	void ReleaseFence() {
-		sw_sync_timeline_inc(sync_timeline_fd_, 1);
-		next_sync_point_++;
-	}
+    void ReleaseFence() {
+        sw_sync_timeline_inc(sync_timeline_fd_, 1);
+        next_sync_point_++;
+    }
 
 protected:
-	void Routine() override;
+    void Routine() override;
 
 private:
-	int Render(buffer_handle_t h);
+    int Render(buffer_handle_t h);
 
-	int32_t id_;
-	void *ctx_;
-	NXQueue<buffer_handle_t> queue_;
-	hwc_rect_t displayFrame_;
-	unsigned next_sync_point_;
-	int sync_timeline_fd_;
-	int sync_fence_fd_;
-	buffer_handle_t buffer_;
-	unsigned frame_count_;
+    int32_t id_;
+    void *ctx_;
+    NXQueue<buffer_handle_t> queue_;
+    hwc_rect_t displayFrame_;
+    unsigned next_sync_point_;
+    int sync_timeline_fd_;
+    int sync_fence_fd_;
+    buffer_handle_t buffer_;
+    unsigned frame_count_;
 };
 
 }

@@ -25,47 +25,47 @@
 namespace android {
 
 enum DrmPropertyType {
-	DRM_PROPERTY_TYPE_INT,
-	DRM_PROPERTY_TYPE_ENUM,
-	DRM_PROPERTY_TYPE_OBJECT,
-	DRM_PROPERTY_TYPE_BLOB,
-	DRM_PROPERTY_TYPE_INVALID,
+    DRM_PROPERTY_TYPE_INT,
+    DRM_PROPERTY_TYPE_ENUM,
+    DRM_PROPERTY_TYPE_OBJECT,
+    DRM_PROPERTY_TYPE_BLOB,
+    DRM_PROPERTY_TYPE_INVALID,
 };
 
 class DrmProperty {
 public:
-	DrmProperty() = default;
-	DrmProperty(drmModePropertyPtr p, uint64_t value);
-	DrmProperty(const DrmProperty &) = delete;
-	DrmProperty &operator=(const DrmProperty &) = delete;
+    DrmProperty() = default;
+    DrmProperty(drmModePropertyPtr p, uint64_t value);
+    DrmProperty(const DrmProperty &) = delete;
+    DrmProperty &operator=(const DrmProperty &) = delete;
 
-	void Init(drmModePropertyPtr p, uint64_t value);
+    void Init(drmModePropertyPtr p, uint64_t value);
 
-	uint32_t id() const;
-	std::string name() const;
+    uint32_t id() const;
+    std::string name() const;
 
-	int value(uint64_t *value) const;
+    int value(uint64_t *value) const;
 
 private:
-	class DrmPropertyEnum {
-	public:
-		DrmPropertyEnum(drm_mode_property_enum *e);
-		~DrmPropertyEnum();
+    class DrmPropertyEnum {
+    public:
+        DrmPropertyEnum(drm_mode_property_enum *e);
+        ~DrmPropertyEnum();
 
-		uint64_t value_;
-		std::string name_;
-	};
+        uint64_t value_;
+        std::string name_;
+    };
 
-	uint32_t id_ = 0;
+    uint32_t id_ = 0;
 
-	DrmPropertyType type_ = DRM_PROPERTY_TYPE_INVALID;
-	uint32_t flags_ = 0;
-	std::string name_;
-	uint64_t value_ = 0;
+    DrmPropertyType type_ = DRM_PROPERTY_TYPE_INVALID;
+    uint32_t flags_ = 0;
+    std::string name_;
+    uint64_t value_ = 0;
 
-	std::vector<uint64_t> values_;
-	std::vector<DrmPropertyEnum> enums_;
-	std::vector<uint32_t> blob_ids_;
+    std::vector<uint64_t> values_;
+    std::vector<DrmPropertyEnum> enums_;
+    std::vector<uint32_t> blob_ids_;
 };
 
 }

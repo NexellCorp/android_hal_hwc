@@ -31,23 +31,23 @@ class DrmResources;
 
 class Importer {
 public:
-	virtual ~Importer() {
-	}
+    virtual ~Importer() {
+    }
 
-	// Creates a platform-specific importer instance
-	static Importer *CreateInstance(DrmResources *drm);
+    // Creates a platform-specific importer instance
+    static Importer *CreateInstance(DrmResources *drm);
 
-	// Imports the buffer referred to by handle into bo.
-	//
-	// Note: This can be called from a different thread than ReleaseBuffer. The
-	//       implementation is responsible for ensuring thread safety.
-	virtual int ImportBuffer(buffer_handle_t handle, hwc_drm_bo_t *bo) = 0;
+    // Imports the buffer referred to by handle into bo.
+    //
+    // Note: This can be called from a different thread than ReleaseBuffer. The
+    //       implementation is responsible for ensuring thread safety.
+    virtual int ImportBuffer(buffer_handle_t handle, hwc_drm_bo_t *bo) = 0;
 
-	// Releases the buffer object (ie: does the inverse of ImportBuffer)
-	//
-	// Note: This can be called from a different thread than ImportBuffer. The
-	//       implementation is responsible for ensuring thread safety.
-	virtual int ReleaseBuffer(hwc_drm_bo_t *bo) = 0;
+    // Releases the buffer object (ie: does the inverse of ImportBuffer)
+    //
+    // Note: This can be called from a different thread than ImportBuffer. The
+    //       implementation is responsible for ensuring thread safety.
+    virtual int ReleaseBuffer(hwc_drm_bo_t *bo) = 0;
 };
 
 } // namespace android

@@ -27,68 +27,63 @@
 namespace android {
 
 DrmCrtc::DrmCrtc(DrmResources *drm, drmModeCrtcPtr c, unsigned pipe)
-	: drm_(drm),
-	id_(c->crtc_id),
-	pipe_(pipe),
-	display_(-1),
-	x_(c->x),
-	y_(c->y),
-	width_(c->width),
-	height_(c->height),
-	mode_(&c->mode),
-	mode_valid_(c->mode_valid)
+    : drm_(drm),
+    id_(c->crtc_id),
+    pipe_(pipe),
+    display_(-1),
+    mode_(&c->mode)
 {
 }
 
 int DrmCrtc::Init()
 {
-	int ret = drm_->GetCrtcProperty(*this, "ACTIVE", &active_property_);
-	if (ret) {
-		ALOGE("Failed to get ACTIVE property");
-		return ret;
-	}
+    int ret = drm_->GetCrtcProperty(*this, "ACTIVE", &active_property_);
+    if (ret) {
+        ALOGE("Failed to get ACTIVE property");
+        return ret;
+    }
 
-	ret = drm_->GetCrtcProperty(*this, "MODE_ID", &mode_property_);
-	if (ret) {
-		ALOGE("Failed to get MODE_ID property");
-		return ret;
-	}
-	return 0;
+    ret = drm_->GetCrtcProperty(*this, "MODE_ID", &mode_property_);
+    if (ret) {
+        ALOGE("Failed to get MODE_ID property");
+        return ret;
+    }
+    return 0;
 }
 
 uint32_t DrmCrtc::id() const
 {
-	return id_;
+    return id_;
 }
 
 unsigned DrmCrtc::pipe() const
 {
-	return pipe_;
+    return pipe_;
 }
 
 int DrmCrtc::display() const
 {
-	return display_;
+    return display_;
 }
 
 void DrmCrtc::set_display(int display)
 {
-	display_ = display;
+    display_ = display;
 }
 
 bool DrmCrtc::can_bind(int display) const
 {
-	return display_ == -1 || display_ == display;
+    return display_ == -1 || display_ == display;
 }
 
 const DrmProperty &DrmCrtc::active_property() const
 {
-	return active_property_;
+    return active_property_;
 }
 
 const DrmProperty &DrmCrtc::mode_property() const
 {
-	return mode_property_;
+    return mode_property_;
 }
 
 }

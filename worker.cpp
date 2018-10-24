@@ -32,191 +32,191 @@ namespace android {
 static const int64_t kBillion = 1000000000LL;
 
 Worker::Worker(const char *name, int priority)
-	: name_(name), priority_(priority), exit_(false), initialized_(false)
+    : name_(name), priority_(priority), exit_(false), initialized_(false)
 {
 }
 
 Worker::~Worker()
 {
-	if (!initialized_)
-		return;
+    if (!initialized_)
+        return;
 
-	pthread_kill(thread_, SIGTERM);
-	pthread_cond_destroy(&cond_);
-	pthread_mutex_destroy(&lock_);
+    pthread_kill(thread_, SIGTERM);
+    pthread_cond_destroy(&cond_);
+    pthread_mutex_destroy(&lock_);
 }
 
 int Worker::InitWorker()
 {
-	pthread_condattr_t cond_attr;
-	pthread_condattr_init(&cond_attr);
-	pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
-	int ret = pthread_cond_init(&cond_, &cond_attr);
-	if (ret) {
-		ALOGE("Failed to int thread %s condition %d", name_.c_str(), ret);
-		return ret;
-	}
+    pthread_condattr_t cond_attr;
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    int ret = pthread_cond_init(&cond_, &cond_attr);
+    if (ret) {
+        ALOGE("Failed to int thread %s condition %d", name_.c_str(), ret);
+        return ret;
+    }
 
-	ret = pthread_mutex_init(&lock_, NULL);
-	if (ret) {
-		ALOGE("Failed to init thread %s lock %d", name_.c_str(), ret);
-		pthread_cond_destroy(&cond_);
-		return ret;
-	}
+    ret = pthread_mutex_init(&lock_, NULL);
+    if (ret) {
+        ALOGE("Failed to init thread %s lock %d", name_.c_str(), ret);
+        pthread_cond_destroy(&cond_);
+        return ret;
+    }
 
-	ret = pthread_create(&thread_, NULL, InternalRoutine, this);
-	if (ret) {
-		ALOGE("Could not create thread %s %d", name_.c_str(), ret);
-		pthread_mutex_destroy(&lock_);
-		pthread_cond_destroy(&cond_);
-		return ret;
-	}
-	initialized_ = true;
-	return 0;
+    ret = pthread_create(&thread_, NULL, InternalRoutine, this);
+    if (ret) {
+        ALOGE("Could not create thread %s %d", name_.c_str(), ret);
+        pthread_mutex_destroy(&lock_);
+        pthread_cond_destroy(&cond_);
+        return ret;
+    }
+    initialized_ = true;
+    return 0;
 }
 
 bool Worker::initialized() const
 {
-	return initialized_;
+    return initialized_;
 }
 
 int Worker::Lock()
 {
-	return pthread_mutex_lock(&lock_);
+    return pthread_mutex_lock(&lock_);
 }
 
 int Worker::Unlock()
 {
-	return pthread_mutex_unlock(&lock_);
+    return pthread_mutex_unlock(&lock_);
 }
 
 int Worker::SignalLocked()
 {
-	return SignalThreadLocked(false);
+    return SignalThreadLocked(false);
 }
 
 int Worker::ExitLocked()
 {
-	int signal_ret = SignalThreadLocked(true);
-	if (signal_ret)
-		ALOGE("Failed to signal thread %s with exit %d", name_.c_str(),
-				signal_ret);
+    int signal_ret = SignalThreadLocked(true);
+    if (signal_ret)
+        ALOGE("Failed to signal thread %s with exit %d", name_.c_str(),
+                signal_ret);
 
-	int join_ret = pthread_join(thread_, NULL);
-	if (join_ret && join_ret != ESRCH)
-		ALOGE("Failed to join thread %s in exit %d", name_.c_str(),
-				join_ret);
+    int join_ret = pthread_join(thread_, NULL);
+    if (join_ret && join_ret != ESRCH)
+        ALOGE("Failed to join thread %s in exit %d", name_.c_str(),
+                join_ret);
 
-	return signal_ret | join_ret;
+    return signal_ret | join_ret;
 }
 
 int Worker::Signal()
 {
-	int ret = Lock();
-	if (ret) {
-		ALOGE("Failed to acquire lock in Signal() %d\n", ret);
-		return ret;
-	}
+    int ret = Lock();
+    if (ret) {
+        ALOGE("Failed to acquire lock in Signal() %d\n", ret);
+        return ret;
+    }
 
-	int signal_ret = SignalLocked();
+    int signal_ret = SignalLocked();
 
-	ret = Unlock();
-	if (ret) {
-		ALOGE("Failed to release lock in Signal() %d\n", ret);
-		return ret;
-	}
-	return signal_ret;
+    ret = Unlock();
+    if (ret) {
+        ALOGE("Failed to release lock in Signal() %d\n", ret);
+        return ret;
+    }
+    return signal_ret;
 }
 
 int Worker::Exit()
 {
-	int ret = Lock();
-	if (ret) {
-		ALOGE("Failed to acquire lock in Exit() %d\n", ret);
-		return ret;
-	}
+    int ret = Lock();
+    if (ret) {
+        ALOGE("Failed to acquire lock in Exit() %d\n", ret);
+        return ret;
+    }
 
-	int exit_ret = ExitLocked();
+    int exit_ret = ExitLocked();
 
-	ret = Unlock();
-	if (ret) {
-		ALOGE("Failed to release lock in Exit() %d\n", ret);
-		return ret;
-	}
-	return exit_ret;
+    ret = Unlock();
+    if (ret) {
+        ALOGE("Failed to release lock in Exit() %d\n", ret);
+        return ret;
+    }
+    return exit_ret;
 }
 
 int Worker::WaitForSignalOrExitLocked(int64_t max_nanoseconds)
 {
-	if (exit_)
-		return -EINTR;
+    if (exit_)
+        return -EINTR;
 
-	int ret = 0;
-	if (max_nanoseconds < 0) {
-		ret = pthread_cond_wait(&cond_, &lock_);
-	} else {
-		struct timespec abs_deadline;
-		ret = clock_gettime(CLOCK_MONOTONIC, &abs_deadline);
-		if (ret)
-			return ret;
-		int64_t nanos = (int64_t)abs_deadline.tv_nsec + max_nanoseconds;
-		abs_deadline.tv_sec += nanos / kBillion;
-		abs_deadline.tv_nsec = nanos % kBillion;
-		ret = pthread_cond_timedwait(&cond_, &lock_, &abs_deadline);
-		if (ret == ETIMEDOUT)
-			ret = -ETIMEDOUT;
-	}
+    int ret = 0;
+    if (max_nanoseconds < 0) {
+        ret = pthread_cond_wait(&cond_, &lock_);
+    } else {
+        struct timespec abs_deadline;
+        ret = clock_gettime(CLOCK_MONOTONIC, &abs_deadline);
+        if (ret)
+            return ret;
+        int64_t nanos = (int64_t)abs_deadline.tv_nsec + max_nanoseconds;
+        abs_deadline.tv_sec += nanos / kBillion;
+        abs_deadline.tv_nsec = nanos % kBillion;
+        ret = pthread_cond_timedwait(&cond_, &lock_, &abs_deadline);
+        if (ret == ETIMEDOUT)
+            ret = -ETIMEDOUT;
+    }
 
-	if (exit_)
-		return -EINTR;
+    if (exit_)
+        return -EINTR;
 
-	return ret;
+    return ret;
 }
 
 // static
 void *Worker::InternalRoutine(void *arg)
 {
-	Worker *worker = (Worker *)arg;
+    Worker *worker = (Worker *)arg;
 
-	setpriority(PRIO_PROCESS, 0, worker->priority_);
+    setpriority(PRIO_PROCESS, 0, worker->priority_);
 
-	while (true) {
-		int ret = worker->Lock();
-		if (ret) {
-			ALOGE("Failed to lock %s thread %d", worker->name_.c_str(),
-					ret);
-			continue;
-		}
+    while (true) {
+        int ret = worker->Lock();
+        if (ret) {
+            ALOGE("Failed to lock %s thread %d", worker->name_.c_str(),
+                    ret);
+            continue;
+        }
 
-		bool exit = worker->exit_;
+        bool exit = worker->exit_;
 
-		ret = worker->Unlock();
-		if (ret) {
-			ALOGE("Failed to unlock %s thread %d", worker->name_.c_str(),
-					ret);
-			break;
-		}
-		if (exit)
-			break;
+        ret = worker->Unlock();
+        if (ret) {
+            ALOGE("Failed to unlock %s thread %d", worker->name_.c_str(),
+                    ret);
+            break;
+        }
+        if (exit)
+            break;
 
-		worker->Routine();
-	}
-	return NULL;
+        worker->Routine();
+    }
+    return NULL;
 }
 
 int Worker::SignalThreadLocked(bool exit)
 {
-	if (exit)
-		exit_ = exit;
+    if (exit)
+        exit_ = exit;
 
-	int ret = pthread_cond_signal(&cond_);
-	if (ret) {
-		ALOGE("Failed to signal condition on %s thread %d", name_.c_str(),
-				ret);
-		return ret;
-	}
+    int ret = pthread_cond_signal(&cond_);
+    if (ret) {
+        ALOGE("Failed to signal condition on %s thread %d", name_.c_str(),
+                ret);
+        return ret;
+    }
 
-	return 0;
+    return 0;
 }
 
 } // namespace android
