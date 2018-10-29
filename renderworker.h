@@ -102,7 +102,7 @@ public:
 		 * So, if Secondary Display is slower than Primary, buffer is
 		 * accumulated. Below code is workaround for this situation.
 		 */
-		if (id_ == 1 && queue_.size() >= 2)
+		if (queue_.size() >= 2)
 			queue_.pop();
 		Signal();
 	}
