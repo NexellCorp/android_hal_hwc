@@ -758,8 +758,18 @@ static int render_fb(struct hwc_context_t *ctx, int display,
               plane->id());
         return ret;
     }
+
+    /* sync fence */
+    if (fb_layer->acquireFenceFd >= 0) {
+        sync_wait(fb_layer->acquireFenceFd, 1000);
+	}
+
     uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
     ret = drmModeAtomicCommit(ctx->drm.fd(), pset, flags, &ctx->drm);
+    if (fb_layer->acquireFenceFd >= 0) {
+        close(fb_layer->acquireFenceFd);
+        fb_layer->acquireFenceFd = -1;
+    }
     if (ret) {
         ALOGE("Failed to commit pset ret=%d\n", ret);
         drmModeAtomicFree(pset);
