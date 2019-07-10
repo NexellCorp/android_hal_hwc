@@ -21,7 +21,61 @@
 #include <stdint.h>
 #include <string>
 
+#include <hardware/hardware.h>
+#include <hardware/hwcomposer.h>
+#include <sync/sync.h>
+#include <sw_sync.h>
+
+#include <queue>
+#include <mutex>
+
 namespace android {
+
+template <class T>
+class NXQueue
+{
+public:
+	NXQueue() {
+	};
+
+	virtual ~NXQueue() {
+	}
+
+	void queue(const T& item) {
+		std::lock_guard<std::mutex> guard(mutex);
+		q.push(item);
+	}
+
+	const T& dequeue() {
+		std::lock_guard<std::mutex> guard(mutex);
+		const T& item = q.front();
+		q.pop();
+		return item;
+	}
+
+	void pop() {
+		q.pop();
+	}
+
+	bool isEmpty() {
+		std::lock_guard<std::mutex> guard(mutex);
+		return q.empty();
+	}
+
+	size_t size() {
+		std::lock_guard<std::mutex> guard(mutex);
+		return q.size();
+	}
+
+	const T& getHead() {
+		std::lock_guard<std::mutex> guard(mutex);
+		return q.front();
+	}
+
+private:
+	std::queue<T> q;
+	std::mutex mutex;
+};
 
 class Worker {
 public:

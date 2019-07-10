@@ -20,7 +20,6 @@
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer.h>
 #include <sync/sync.h>
-#include <sw_sync.h>
 
 #include <queue>
 #include <mutex>
@@ -28,54 +27,6 @@
 #include "worker.h"
 
 namespace android {
-
-template <class T>
-class NXQueue
-{
-public:
-    NXQueue() {
-    };
-
-    virtual ~NXQueue() {
-    }
-
-    void queue(const T& item) {
-        std::lock_guard<std::mutex> guard(mutex);
-        q.push(item);
-    }
-
-    const T& dequeue() {
-        std::lock_guard<std::mutex> guard(mutex);
-        const T& item = q.front();
-        q.pop();
-        return item;
-    }
-
-    void pop() {
-        q.pop();
-    }
-
-    bool isEmpty() {
-        std::lock_guard<std::mutex> guard(mutex);
-        return q.empty();
-    }
-
-    size_t size() {
-        std::lock_guard<std::mutex> guard(mutex);
-        return q.size();
-    }
-
-    const T& getHead() {
-        std::lock_guard<std::mutex> guard(mutex);
-        return q.front();
-    }
-
-private:
-    std::queue<T> q;
-    std::mutex mutex;
-};
-
-// #define USE_SYNC
 
 class RenderWorker: public Worker {
 public:
@@ -87,11 +38,6 @@ public:
     int Init(int32_t id, void *ctx) {
         id_ = id;
         ctx_ = ctx;
-#ifdef USE_SYNC
-        sync_fence_fd_ = -1;
-        next_sync_point_ = 1;
-        sync_timeline_fd_ = sw_sync_timeline_create();
-#endif
         buffer_ = NULL;
         frame_count_ = 0;
 
@@ -105,8 +51,10 @@ public:
          * So, if Secondary Display is slower than Primary, buffer is
          * accumulated. Below code is workaround for this situation.
          */
-        if (id_ == 1 && queue_.size() >= 2)
+        if (id_ == 1 && queue_.size() >= 2) {
             queue_.pop();
+            queue_fd_.pop(); /* nexell sync use */
+        }
         Signal();
     }
 
@@ -116,28 +64,27 @@ public:
         return queue_.dequeue();
     }
 
+    /* nexell sync use --------------------- */
+    void QueueFD(int fd) {
+        queue_fd_.queue(fd);
+        //Signal();
+    }
+
+    int DequeueFD() {
+        if (queue_fd_.isEmpty())
+            return NULL;
+        return queue_fd_.dequeue();
+    }
+
+    void FlushFD() {
+        while (!queue_fd_.isEmpty())
+            queue_fd_.dequeue();
+    }
+    /* nexell sync use --------------------- */
+
     void SetDisplayFrame(hwc_rect_t &d) {
         memcpy(&displayFrame_, &d, sizeof(d));
     }
-
-#ifdef USE_SYNC
-    int CreateSyncFence() {
-        char str[256] = {0, };
-
-        if (sync_fence_fd_ >= 0)
-            close(sync_fence_fd_);
-
-        sprintf(str, "render fence %d", next_sync_point_);
-        sync_fence_fd_ = sw_sync_fence_create(sync_timeline_fd_, str,
-                                              next_sync_point_);
-        return dup(sync_fence_fd_);
-    }
-
-    void ReleaseFence() {
-        sw_sync_timeline_inc(sync_timeline_fd_, 1);
-        next_sync_point_++;
-    }
-#endif
 
 protected:
     void Routine() override;
@@ -148,12 +95,9 @@ private:
     int32_t id_;
     void *ctx_;
     NXQueue<buffer_handle_t> queue_;
+    /* nexell sync use */
+    NXQueue<int> queue_fd_;
     hwc_rect_t displayFrame_;
-#ifdef USE_SYNC
-    unsigned next_sync_point_;
-    int sync_timeline_fd_;
-    int sync_fence_fd_;
-#endif
     buffer_handle_t buffer_;
     unsigned frame_count_;
 };
