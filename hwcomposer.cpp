@@ -598,6 +598,7 @@ static int render_fb(struct hwc_context_t *ctx, int display,
     hwc_drm_display_t *hd = &ctx->displays[display];
     hwc_drm_bo_t *bo = NULL;
     int ret;
+    ALOGI("[SEOJI] render_fb");
 
     if (!fb_layer->handle)
         return -EINVAL;
@@ -758,8 +759,18 @@ static int render_fb(struct hwc_context_t *ctx, int display,
               plane->id());
         return ret;
     }
+
+    /* sync fence */
+    if (fb_layer->acquireFenceFd >= 0) {
+        sync_wait(fb_layer->acquireFenceFd, 1000);
+    }
+
     uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
     ret = drmModeAtomicCommit(ctx->drm.fd(), pset, flags, &ctx->drm);
+    if (fb_layer->acquireFenceFd >= 0) {
+        close(fb_layer->acquireFenceFd);
+        fb_layer->acquireFenceFd = -1;
+    }
     if (ret) {
         ALOGE("Failed to commit pset ret=%d\n", ret);
         drmModeAtomicFree(pset);
@@ -791,6 +802,7 @@ static int hwc_set(hwc_composer_device_1_t * dev, size_t num_displays,
 {
     struct hwc_context_t *ctx = (struct hwc_context_t *)&dev->common;
     int ret = 0;
+    ALOGI("[SEOJI] hwc_set");
 
     for (size_t i = 0; i < num_displays; i++) {
         hwc_display_contents_1_t *dc = sf_display_contents[i];
