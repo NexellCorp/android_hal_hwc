@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eaf738c7_86fd3525",
+        "filename": "hwcomposer.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 765,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-07-11T05:00:47Z",
+      "side": 1,
+      "message": "Do not use tab.\n\nset vim like below\n:set ts\u003d4 sw\u003d4 et",
+      "range": {
+        "startLine": 765,
+        "startChar": 0,
+        "endLine": 765,
+        "endChar": 1
+      },
+      "revId": "63c0f2261d5ea6738eda0042e11ccf96e16ce6ec",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    }
+  ]
+}
