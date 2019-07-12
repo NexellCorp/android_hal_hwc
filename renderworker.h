@@ -103,7 +103,10 @@ public:
 		 * accumulated. Below code is workaround for this situation.
 		 */
 		if (queue_.size() >= 2)
+		{
 			queue_.pop();
+			queue_fd_.pop(); /* nexell sync use */
+		}
 		Signal();
 	}
 
@@ -117,6 +120,23 @@ public:
 		while (!queue_.isEmpty())
 			queue_.dequeue();
 	}
+
+	/* nexell sync use --------------------- */
+	void QueueFD(int fd) {
+		queue_fd_.queue(fd);
+	}
+
+	int DequeueFD() {
+		if (queue_fd_.isEmpty())
+			return NULL;
+		return queue_fd_.dequeue();
+	}
+
+	void FlushFD() {
+		while (!queue_fd_.isEmpty())
+			queue_fd_.dequeue();
+	}
+	/* nexell sync use --------------------- */
 
 	void StopRender() {
 		Lock();
@@ -155,6 +175,8 @@ private:
 	int32_t id_;
 	void *ctx_;
 	NXQueue<buffer_handle_t> queue_;
+	/* nexell sync use */
+	NXQueue<int> queue_fd_;
 	hwc_rect_t displayFrame_;
 	unsigned next_sync_point_;
 	int sync_timeline_fd_;
